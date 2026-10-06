@@ -8,46 +8,44 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if user is logged in on load
   useEffect(() => {
-    const checkLoggedIn = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const res = await api.get('/users/me');
-          setUser(res.data.data.user);
-        } catch (error) {
-          localStorage.removeItem('token');
-          setUser(null);
-        }
-      }
+    const token = localStorage.getItem('token');
+    if (token) {
+      api.get('/users/me')
+        .then(res => setUser(res.data.data.user))
+        .catch(() => localStorage.removeItem('token'))
+        .finally(() => setLoading(false));
+    } else {
       setLoading(false);
-    };
-    checkLoggedIn();
+    }
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (emailOrCredentials, passwordParam) => {
     try {
-      const res = await api.post('/users/login', { email, password });
+      const payload = typeof emailOrCredentials === 'object'
+        ? emailOrCredentials
+        : { email: emailOrCredentials, password: passwordParam };
+
+      const res = await api.post('/users/login', payload);
       localStorage.setItem('token', res.data.token);
       setUser(res.data.data.user);
-      toast.success("Tizimga muvaffaqiyatli kirdingiz!");
-      return true;
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Xatolik yuz berdi");
+      toast.success(`Xush kelibsiz, ${res.data.data.user.fullName}!`);
+      return res.data.data.user;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Kirish muvaffaqiyatsiz.');
       return false;
     }
   };
 
-  const register = async (userData) => {
+  const register = async (data) => {
     try {
-      const res = await api.post('/users/register', userData);
+      const res = await api.post('/users/register', data);
       localStorage.setItem('token', res.data.token);
       setUser(res.data.data.user);
       toast.success("Ro'yxatdan muvaffaqiyatli o'tdingiz!");
       return true;
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Xatolik yuz berdi");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Ro'yxatdan o'tish muvaffaqiyatsiz.");
       return false;
     }
   };
@@ -55,12 +53,12 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
-    toast.info("Tizimdan chiqdingiz");
+    toast.info('Tizimdan chiqildi.');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
-      {children}
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 };

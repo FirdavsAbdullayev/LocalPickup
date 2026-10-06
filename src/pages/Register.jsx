@@ -4,10 +4,10 @@ import { AuthContext } from '../context/AuthContext';
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    name: '',
+    fullName: '',
     email: '',
     password: '',
-    role: 'customer'
+    role: 'CUSTOMER'
   });
   
   const { register } = useContext(AuthContext);
@@ -37,11 +37,11 @@ const Register = () => {
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <input
-                name="name"
+                name="fullName"
                 type="text"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Ismingiz"
+                placeholder="Ismingiz (To'liq)"
                 onChange={handleChange}
               />
             </div>
@@ -72,8 +72,8 @@ const Register = () => {
                 className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 bg-white text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 onChange={handleChange}
               >
-                <option value="customer">Oddiy xaridor (Customer)</option>
-                <option value="shop_owner">Do'kon egasi (Shop Owner)</option>
+                <option value="CUSTOMER">Oddiy xaridor (Customer)</option>
+                <option value="VENDOR">Do'kon egasi (Vendor)</option>
               </select>
             </div>
           </div>

@@ -1,72 +1,117 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
 import { toast } from 'react-toastify';
+import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 
 const CreateShop = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
     name: '',
     description: '',
     phone: '',
-    address: ''
+    address: '',
+    logo: '',
   });
 
-  if (user?.role !== 'shop_owner' && user?.role !== 'super_admin') {
-    return (
-      <div className="text-center py-20 text-red-600 font-bold text-xl">
-        Kechirasiz, yangi do'kon ochish uchun siz "Do'kon egasi" (Shop Owner) rolida bo'lishingiz kerak.
-      </div>
-    );
-  }
-
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!user) {
+      toast.error('Iltimos, avval tizimga kiring!');
+      navigate('/login');
+      return;
+    }
+    setLoading(true);
     try {
-      await api.post('/shops', formData);
-      toast.success("Do'kon muvaffaqiyatli yaratildi!");
-      navigate('/shops');
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Xatolik yuz berdi");
+      const res = await api.post('/shops', form);
+      toast.success('Do\'koningiz muvaffaqiyatli yaratildi!');
+      navigate(`/shops/${res.data.data.shop.slug}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Do\'kon yaratishda xatolik');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
-      <div className="bg-white shadow rounded-lg p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Yangi do'kon ochish</h1>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Do'kon nomi *</label>
-            <input type="text" name="name" required onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Tavsif (Qanday mahsulotlar sotiladi?)</label>
-            <textarea name="description" rows="4" onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Telefon raqam</label>
-              <input type="text" name="phone" onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Manzil</label>
-              <input type="text" name="address" onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
-            </div>
-          </div>
-          <div className="pt-4">
-            <button type="submit" className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-              Yaratish
-            </button>
-          </div>
-        </form>
-      </div>
+    <div className="max-w-2xl mx-auto px-4 py-10">
+      <h1 className="text-3xl font-extrabold text-gray-900 mb-8">Yangi do'kon ochish</h1>
+      <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 space-y-5">
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Do'kon nomi *</label>
+          <input
+            name="name"
+            type="text"
+            required
+            value={form.name}
+            onChange={handleChange}
+            placeholder="Masalan: 'Oqtepa Lavash Chilonzor'"
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Telefon raqam</label>
+          <input
+            name="phone"
+            type="text"
+            value={form.phone}
+            onChange={handleChange}
+            placeholder="+998 90 123 45 67"
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Manzil</label>
+          <input
+            name="address"
+            type="text"
+            value={form.address}
+            onChange={handleChange}
+            placeholder="Toshkent sh., Chilonzor 9-mavze"
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Logo / Banner rasmi (URL)</label>
+          <input
+            name="logo"
+            type="url"
+            value={form.logo}
+            onChange={handleChange}
+            placeholder="https://..."
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Tavsif</label>
+          <textarea
+            name="description"
+            rows={3}
+            value={form.description}
+            onChange={handleChange}
+            placeholder="Do'koningiz va mahsulotlaringiz haqida qisqacha ma'lumot..."
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full py-3.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition disabled:opacity-60 shadow-sm"
+        >
+          {loading ? 'Yaratilmoqda...' : 'Do\'konni yaratish'}
+        </button>
+      </form>
     </div>
   );
 };

@@ -10,9 +10,15 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const success = await login(email, password);
-    if (success) {
-      navigate('/shops');
+    const loggedInUser = await login({ email, password });
+    if (loggedInUser) {
+      if (loggedInUser.role === 'SUPER_ADMIN') {
+        navigate('/admin');
+      } else if (loggedInUser.role === 'VENDOR') {
+        navigate('/vendor/orders');
+      } else {
+        navigate('/shops');
+      }
     }
   };
 

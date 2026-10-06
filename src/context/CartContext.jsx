@@ -1,43 +1,57 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 import { toast } from 'react-toastify';
+import api from '../services/api';
+import { AuthContext } from './AuthContext';
 
 export const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
-  const [cartItems, setCartItems] = useState(() => {
-    const savedCart = localStorage.getItem('cart');
-    return savedCart ? JSON.parse(savedCart) : [];
-  });
+  const [cartItems, setCartItems] = useState([]);
+  const { user } = useContext(AuthContext);
 
-  useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cartItems));
-  }, [cartItems]);
-
-  const addToCart = (product) => {
-    setCartItems((prevItems) => {
-      const existing = prevItems.find(item => item.id === product.id);
-      if (existing) {
-        toast.info("Bu mahsulot savatda bor, soni oshirildi!");
-        return prevItems.map(item => 
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      }
-      toast.success("Savatga qo'shildi!");
-      return [...prevItems, { ...product, quantity: 1 }];
-    });
+  const fetchCart = async () => {
+    if (!user) { setCartItems([]); return; }
+    try {
+      const res = await api.get('/cart');
+      setCartItems(res.data.data.cart);
+    } catch (e) { console.error(e); }
   };
 
-  const removeFromCart = (productId) => {
-    setCartItems(prev => prev.filter(item => item.id !== productId));
-    toast.error("Savatdan olib tashlandi!");
+  useEffect(() => { fetchCart(); }, [user]);
+
+  const addToCart = async (product) => {
+    if (!user) { toast.error('Iltimos, avval tizimga kiring!'); return; }
+    try {
+      await api.post('/cart', { productId: product.id, quantity: 1 });
+      toast.success("Savatga muvaffaqiyatli qo'shildi");
+      fetchCart();
+    } catch (e) { toast.error('Xatolik yuz berdi'); }
   };
 
-  const clearCart = () => {
-    setCartItems([]);
+  const updateQuantity = async (cartItemId, quantity) => {
+    try {
+      await api.patch(`/cart/${cartItemId}`, { quantity });
+      fetchCart();
+    } catch (e) { console.error(e); }
+  };
+
+  const removeFromCart = async (cartItemId) => {
+    try {
+      await api.delete(`/cart/${cartItemId}`);
+      toast.info('Savatdan olib tashlandi');
+      fetchCart();
+    } catch (e) { toast.error('Xatolik yuz berdi'); }
+  };
+
+  const clearCart = async () => {
+    try {
+      if (cartItems.length > 0) await api.delete('/cart');
+      setCartItems([]);
+    } catch (e) { console.error(e); }
   };
 
   return (
-    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, clearCart }}>
+    <CartContext.Provider value={{ cartItems, addToCart, updateQuantity, removeFromCart, clearCart, fetchCart }}>
       {children}
     </CartContext.Provider>
   );

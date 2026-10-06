@@ -1,37 +1,41 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 import { toast } from 'react-toastify';
+import api from '../services/api';
+import { AuthContext } from './AuthContext';
 
 export const FavoritesContext = createContext();
 
 export const FavoritesProvider = ({ children }) => {
-  const [favorites, setFavorites] = useState(() => {
-    const savedFavs = localStorage.getItem('favorites');
-    return savedFavs ? JSON.parse(savedFavs) : [];
-  });
+  const [favorites, setFavorites] = useState([]);
+  const { user } = useContext(AuthContext);
 
-  useEffect(() => {
-    localStorage.setItem('favorites', JSON.stringify(favorites));
-  }, [favorites]);
+  const fetchFavorites = async () => {
+    if (!user) { setFavorites([]); return; }
+    try {
+      const res = await api.get('/favorites');
+      setFavorites(res.data.data.favorites);
+    } catch (e) { console.error(e); }
+  };
 
-  const toggleFavorite = (product) => {
-    setFavorites((prev) => {
-      const isExist = prev.find(item => item.id === product.id);
-      if (isExist) {
-        toast.info("Yoqtirganlardan olib tashlandi");
-        return prev.filter(item => item.id !== product.id);
+  useEffect(() => { fetchFavorites(); }, [user]);
+
+  const toggleFavorite = async (product) => {
+    if (!user) { toast.error('Iltimos, avval tizimga kiring!'); return; }
+    try {
+      const res = await api.post('/favorites', { productId: product.id });
+      if (res.data.message === 'Removed from favorites') {
+        toast.info('Yoqtirganlardan olib tashlandi');
       } else {
-        toast.success("Yoqtirganlarga qo'shildi ❤️");
-        return [...prev, product];
+        toast.success("Yoqtirganlar ro'yxatiga qo'shildi");
       }
-    });
+      fetchFavorites();
+    } catch (e) { toast.error('Xatolik yuz berdi'); }
   };
 
-  const isFavorite = (productId) => {
-    return favorites.some(item => item.id === productId);
-  };
+  const isFavorite = (productId) => favorites.some(f => f.productId === productId);
 
   return (
-    <FavoritesContext.Provider value={{ favorites, toggleFavorite, isFavorite }}>
+    <FavoritesContext.Provider value={{ favorites, toggleFavorite, isFavorite, fetchFavorites }}>
       {children}
     </FavoritesContext.Provider>
   );
