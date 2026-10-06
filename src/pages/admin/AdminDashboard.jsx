@@ -18,31 +18,37 @@ const AdminDashboard = () => {
       api.get('/admin/stats'),
       api.get('/admin/users'),
       api.get('/admin/shops'),
-    ]).then(([statsRes, usersRes, shopsRes]) => {
-      setStats(statsRes.data.data.stats);
-      setUsers(usersRes.data.data.users);
-      setShops(shopsRes.data.data.shops);
-    }).catch(console.error).finally(() => setLoading(false));
+    ])
+      .then(([statsRes, usersRes, shopsRes]) => {
+        setStats(statsRes.data?.data?.stats || null);
+        setUsers(usersRes.data?.data?.users || []);
+        setShops(shopsRes.data?.data?.shops || []);
+      })
+      .catch((err) => {
+        console.error('Admin dashboard load error:', err);
+        toast.error(err.response?.data?.message || 'Ma\'lumotlarni yuklashda xatolik yuz berdi');
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const approveShop = async (shopId) => {
     try {
       await api.patch(`/admin/shops/${shopId}/approve`);
-      setShops(prev => prev.map(s => s.id === shopId ? { ...s, isApproved: true } : s));
-      toast.success('Do\'kon tasdiqlandi!');
-    } catch {
-      toast.error('Xatolik');
+      setShops((prev) => prev.map((s) => (s.id === shopId ? { ...s, isApproved: true } : s)));
+      toast.success('Do\'kon muvaffaqiyatli tasdiqlandi!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Do\'konni tasdiqlashda xatolik');
     }
   };
 
   const rejectShop = async (shopId) => {
-    if (!confirm('Do\'konni rad etmoqchimisiz?')) return;
+    if (!window.confirm('Do\'konni rad etib, o\'chirib tashlamoqchimisiz?')) return;
     try {
       await api.delete(`/admin/shops/${shopId}`);
-      setShops(prev => prev.filter(s => s.id !== shopId));
+      setShops((prev) => prev.filter((s) => s.id !== shopId));
       toast.success('Do\'kon o\'chirildi.');
-    } catch {
-      toast.error('Xatolik');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Do\'konni o\'chirishda xatolik');
     }
   };
 
@@ -50,17 +56,24 @@ const AdminDashboard = () => {
     const newStatus = currentStatus === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE';
     try {
       await api.patch(`/admin/users/${userId}/status`, { status: newStatus });
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, status: newStatus } : u)));
       toast.success(`Foydalanuvchi ${newStatus === 'ACTIVE' ? 'faollashtirildi' : 'bloklandi'}`);
-    } catch {
-      toast.error('Xatolik');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Statusni o\'zgartirishda xatolik');
     }
   };
 
-  if (loading) return <div className="text-center py-20 text-gray-500">Yuklanmoqda...</div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-32 text-gray-500 font-medium">
+        Yuklanmoqda...
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      {/* Header */}
       <div className="flex items-center gap-3 mb-8">
         <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl border border-purple-100">
           <Shield className="h-7 w-7" />
@@ -77,7 +90,7 @@ const AdminDashboard = () => {
           { key: 'stats', label: 'Statistika', icon: BarChart3 },
           { key: 'shops', label: 'Do\'konlar', icon: Store },
           { key: 'users', label: 'Foydalanuvchilar', icon: Users },
-        ].map(tab => {
+        ].map((tab) => {
           const Icon = tab.icon;
           return (
             <button
@@ -96,15 +109,16 @@ const AdminDashboard = () => {
         })}
       </div>
 
+      {/* Tab 1: Stats */}
       {activeTab === 'stats' && stats && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {[
-            { label: 'Foydalanuvchilar', value: stats.totalUsers, icon: Users, color: 'from-blue-500 to-blue-600' },
-            { label: 'Faol do\'konlar', value: stats.totalShops, icon: Store, color: 'from-emerald-500 to-emerald-600' },
-            { label: 'Jami buyurtmalar', value: stats.totalOrders, icon: ClipboardList, color: 'from-amber-500 to-amber-600' },
-            { label: 'Kutilayotgan', value: stats.pendingOrders, icon: Clock, color: 'from-orange-500 to-orange-600' },
-            { label: 'Kutilayotgan do\'konlar', value: stats.pendingShops, icon: Hourglass, color: 'from-purple-500 to-purple-600' },
-          ].map(s => {
+            { label: 'Foydalanuvchilar', value: stats.totalUsers ?? 0, icon: Users, color: 'from-blue-500 to-blue-600' },
+            { label: 'Faol do\'konlar', value: stats.totalShops ?? 0, icon: Store, color: 'from-emerald-500 to-emerald-600' },
+            { label: 'Jami buyurtmalar', value: stats.totalOrders ?? 0, icon: ClipboardList, color: 'from-amber-500 to-amber-600' },
+            { label: 'Kutilayotgan buyurtmalar', value: stats.pendingOrders ?? 0, icon: Clock, color: 'from-orange-500 to-orange-600' },
+            { label: 'Kutilayotgan do\'konlar', value: stats.pendingShops ?? 0, icon: Hourglass, color: 'from-purple-500 to-purple-600' },
+          ].map((s) => {
             const Icon = s.icon;
             return (
               <div key={s.label} className={`bg-gradient-to-br ${s.color} rounded-2xl p-5 text-white shadow-sm`}>
@@ -120,97 +134,134 @@ const AdminDashboard = () => {
             <div className="p-2 bg-white/20 rounded-xl w-fit mb-3">
               <Coins className="h-6 w-6" />
             </div>
-            <div className="text-3xl font-extrabold">{Number(stats.gmv).toLocaleString()} so'm</div>
+            <div className="text-3xl font-extrabold">{Number(stats.gmv || 0).toLocaleString()} so'm</div>
             <div className="text-sm text-white/80 mt-1">Platforma umumiy tovar aylanmasi (GMV)</div>
           </div>
         </div>
       )}
 
+      {/* Tab 2: Shops */}
       {activeTab === 'shops' && (
         <div className="space-y-4">
-          {shops.map(shop => (
-            <div key={shop.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-gray-900 text-lg">{shop.name}</h3>
-                  {shop.isApproved ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200">
-                      <Check className="h-3 w-3" /> Tasdiqlangan
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-50 text-amber-700 text-xs font-bold rounded-full border border-amber-200">
-                      <Clock className="h-3 w-3" /> Kutilmoqda
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-500 mt-1">Egasi: {shop.owner?.fullName} ({shop.owner?.email})</p>
-                {shop.address && <p className="text-xs text-gray-400 mt-0.5">Manzil: {shop.address}</p>}
-              </div>
-              <div className="flex gap-2">
-                {!shop.isApproved && (
-                  <button
-                    onClick={() => approveShop(shop.id)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition shadow-sm"
-                  >
-                    <CheckCircle2 className="h-4 w-4" /> Tasdiqlash
-                  </button>
-                )}
-                <button
-                  onClick={() => rejectShop(shop.id)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-white text-rose-600 border border-rose-200 rounded-xl text-sm font-medium hover:bg-rose-50 transition"
-                >
-                  <Trash2 className="h-4 w-4" /> O'chirish
-                </button>
-              </div>
+          {shops.length === 0 ? (
+            <div className="text-center py-10 text-gray-400 bg-white rounded-2xl border border-gray-100">
+              Do'konlar topilmadi
             </div>
-          ))}
+          ) : (
+            shops.map((shop) => (
+              <div
+                key={shop.id}
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-wrap items-center justify-between gap-4"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-gray-900 text-lg">{shop.name}</h3>
+                    {shop.isApproved ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200">
+                        <Check className="h-3 w-3" /> Tasdiqlangan
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-50 text-amber-700 text-xs font-bold rounded-full border border-amber-200">
+                        <Clock className="h-3 w-3" /> Kutilmoqda
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Egasi: {shop.owner?.fullName || 'Ko\'rsatilmagan'} ({shop.owner?.email || '-'})
+                  </p>
+                  {shop.address && <p className="text-xs text-gray-400 mt-0.5">Manzil: {shop.address}</p>}
+                </div>
+                <div className="flex gap-2">
+                  {!shop.isApproved && (
+                    <button
+                      onClick={() => approveShop(shop.id)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition shadow-sm"
+                    >
+                      <CheckCircle2 className="h-4 w-4" /> Tasdiqlash
+                    </button>
+                  )}
+                  <button
+                    onClick={() => rejectShop(shop.id)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-white text-rose-600 border border-rose-200 rounded-xl text-sm font-medium hover:bg-rose-50 transition"
+                  >
+                    <Trash2 className="h-4 w-4" /> O'chirish
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 
+      {/* Tab 3: Users */}
       {activeTab === 'users' && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-100">
-            <thead className="bg-gray-50">
-              <tr>
-                {['Ism', 'Email', 'Telefon', 'Rol', 'Status', 'Amallar'].map(h => (
-                  <th key={h} className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {users.map(u => (
-                <tr key={u.id} className="hover:bg-gray-50 transition">
-                  <td className="px-6 py-4 font-medium text-gray-900">{u.fullName}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{u.email}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{u.phone || '-'}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                      u.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-700' :
-                      u.role === 'VENDOR' ? 'bg-indigo-100 text-indigo-700' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>{u.role}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                      u.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                    }`}>{u.status}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() => toggleUserStatus(u.id, u.status)}
-                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                        u.status === 'ACTIVE'
-                          ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200'
-                          : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200'
-                      }`}
-                    >
-                      {u.status === 'ACTIVE' ? <><Ban className="h-3.5 w-3.5" /> Bloklash</> : <><Check className="h-3.5 w-3.5" /> Faollashtirish</>}
-                    </button>
-                  </td>
+          {users.length === 0 ? (
+            <div className="text-center py-10 text-gray-400">Foydalanuvchilar topilmadi</div>
+          ) : (
+            <table className="min-w-full divide-y divide-gray-100">
+              <thead className="bg-gray-50">
+                <tr>
+                  {['Ism', 'Email', 'Telefon', 'Rol', 'Status', 'Amallar'].map((h) => (
+                    <th key={h} className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {users.map((u) => (
+                  <tr key={u.id} className="hover:bg-gray-50 transition">
+                    <td className="px-6 py-4 font-medium text-gray-900">{u.fullName || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{u.email}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{u.phone || '-'}</td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                          u.role === 'SUPER_ADMIN'
+                            ? 'bg-purple-100 text-purple-700'
+                            : u.role === 'VENDOR'
+                            ? 'bg-indigo-100 text-indigo-700'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        {u.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                          u.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                        }`}
+                      >
+                        {u.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => toggleUserStatus(u.id, u.status)}
+                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                          u.status === 'ACTIVE'
+                            ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200'
+                            : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200'
+                        }`}
+                      >
+                        {u.status === 'ACTIVE' ? (
+                          <>
+                            <Ban className="h-3.5 w-3.5" /> Bloklash
+                          </>
+                        ) : (
+                          <>
+                            <Check className="h-3.5 w-3.5" /> Faollashtirish
+                          </>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
     </div>
