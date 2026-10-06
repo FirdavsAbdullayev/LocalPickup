@@ -16,9 +16,12 @@ const ShopList = () => {
       setLoading(true);
       try {
         const res = await api.get(`/shops${search ? `?search=${search}` : ''}`);
-        setShops(res.data.data.shops);
+        // Har qanday javob tuzilmasidan massivni xavfsiz ajratib olish
+        const fetchedShops = res.data?.data?.shops || res.data?.shops || res.data?.data || res.data || [];
+        setShops(Array.isArray(fetchedShops) ? fetchedShops : []);
       } catch (e) {
-        console.error(e);
+        console.error('Fetch shops error:', e);
+        setShops([]);
       } finally {
         setLoading(false);
       }
@@ -63,7 +66,7 @@ const ShopList = () => {
             <Store className="h-8 w-8 stroke-[1.5]" />
           </div>
           <p className="text-xl font-bold text-gray-700">Do'konlar topilmadi</p>
-          <p className="text-gray-400 mt-2 text-sm">Boshqa kalit so'z bilan qidiring</p>
+          <p className="text-gray-400 mt-2 text-sm">Boshqa kalit so'z bilan qidiring yoki yangi do'kon qo'shing</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

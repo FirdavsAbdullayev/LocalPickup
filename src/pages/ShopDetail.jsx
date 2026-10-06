@@ -18,9 +18,12 @@ const ShopDetail = () => {
       setLoading(true);
       try {
         const res = await api.get(`/shops/slug/${slug}`);
-        setShop(res.data.data.shop);
+        // Xavfsiz ma'lumot olish (har qanday API strukturasiga mos tushadi)
+        const shopData = res.data?.data?.shop || res.data?.shop || res.data;
+        setShop(shopData || null);
       } catch (e) {
-        console.error(e);
+        console.error('Fetch shop error:', e);
+        setShop(null);
       } finally {
         setLoading(false);
       }
