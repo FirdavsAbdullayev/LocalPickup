@@ -1,6 +1,11 @@
 import axios from 'axios';
 
-let envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+// 1. VITE_API_URL, VITE_API_BASE_URL va Railway jonli havolasi zaxiraga qo'shildi
+let envUrl =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  'https://renewed-success-production-b764.up.railway.app/api/v1';
+
 if (envUrl && !envUrl.endsWith('/api/v1')) {
   envUrl = envUrl.replace(/\/$/, '') + '/api/v1';
 }
