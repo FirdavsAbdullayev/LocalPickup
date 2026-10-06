@@ -1,12 +1,12 @@
 import axios from 'axios';
 
-// 1. VITE_API_URL yoki VITE_API_BASE_URL ma'lumotlarini olish va zaxira havola
+// 1. .env dan keladigan va zaxiradagi Railway API havola
 let envUrl =
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
   'https://renewed-success-production-b764.up.railway.app/api/v1';
 
-// 2. To'rtburchak qavslar [...], tirnoqlar ' " va keraksiz bo'sh joylarni tozalash
+// 2. Vercel environment variable'larida tushib qolgan '[', ']' va ortiqcha belgilarini tozalash
 if (envUrl) {
   envUrl = envUrl.replace(/[\[\]'"]/g, '').trim();
 
@@ -20,17 +20,19 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Request Interceptor (JWT Token biriktirish)
+// Request Interceptor: har bir so'rovga JWT token qo'shish
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor (401 xatolikda tokenni o'chirish)
+// Response Interceptor: 401 (Unauthorized) bo'lsa tokenni tozalash
 api.interceptors.response.use(
   (response) => response,
   (error) => {
