@@ -1,38 +1,56 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FavoritesContext, useAuth } from './contexts';
 import { toast } from 'react-toastify';
 import api from '../services/api';
-import { AuthContext } from './AuthContext';
-
-export const FavoritesContext = createContext();
 
 export const FavoritesProvider = ({ children }) => {
   const [favorites, setFavorites] = useState([]);
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
 
-  const fetchFavorites = async () => {
-    if (!user) { setFavorites([]); return; }
+  const fetchFavorites = useCallback(async () => {
     try {
       const res = await api.get('/favorites');
       setFavorites(res.data.data.favorites);
-    } catch (e) { console.error(e); }
-  };
+    } catch {
+      setFavorites([]);
+    }
+  }, []);
 
-  useEffect(() => { fetchFavorites(); }, [user]);
-
-  const toggleFavorite = async (product) => {
-    if (!user) { toast.error('Iltimos, avval tizimga kiring!'); return; }
-    try {
-      const res = await api.post('/favorites', { productId: product.id });
-      if (res.data.message === 'Removed from favorites') {
-        toast.info('Yoqtirganlardan olib tashlandi');
-      } else {
-        toast.success("Yoqtirganlar ro'yxatiga qo'shildi");
+  useEffect(() => {
+    const load = async () => {
+      if (!user) {
+        setFavorites([]);
+        return;
       }
-      fetchFavorites();
-    } catch (e) { toast.error('Xatolik yuz berdi'); }
-  };
+      await fetchFavorites();
+    };
+    load();
+  }, [user, fetchFavorites]);
 
-  const isFavorite = (productId) => favorites.some(f => f.productId === productId);
+  const toggleFavorite = useCallback(
+    async (product) => {
+      if (!user) {
+        toast.error('Iltimos, avval tizimga kiring!');
+        return;
+      }
+      try {
+        const res = await api.post('/favorites', { productId: product.id });
+        const removed = res.data.message === 'Removed from favorites';
+        setFavorites((prev) =>
+          removed
+            ? prev.filter((f) => f.productId !== product.id)
+            : [...prev, { productId: product.id, product }]
+        );
+        toast.info(removed ? 'Yoqtirganlardan olib tashlandi' : "Yoqtirganlar ro'yxatiga qo'shildi");
+      } catch {
+        toast.error('Xatolik yuz berdi');
+      }
+    },
+    [user]
+  );
+
+  const favoriteIds = useMemo(() => new Set(favorites.map((f) => f.productId)), [favorites]);
+  const isFavorite = useCallback((productId) => favoriteIds.has(productId), [favoriteIds]);
 
   return (
     <FavoritesContext.Provider value={{ favorites, toggleFavorite, isFavorite, fetchFavorites }}>

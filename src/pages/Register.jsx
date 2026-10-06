@@ -1,96 +1,171 @@
-import React, { useContext, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext';
+import { useState } from 'react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { ArrowRight, Mail, LockKeyhole, Phone, ShoppingBag, Store, UserRound } from 'lucide-react';
+import { useAuth } from '../context/contexts';
+import Spinner from '../components/Spinner';
+
+const ROLES = [
+  {
+    value: 'CUSTOMER',
+    title: 'Xaridor',
+    description: "Do'konlarni ko'rish va mahsulot band qilish",
+    icon: UserRound,
+  },
+  {
+    value: 'VENDOR',
+    title: "Do'kon egasi",
+    description: "Do'kon ochish va buyurtmalarni boshqarish",
+    icon: Store,
+  },
+];
 
 const Register = () => {
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    role: 'CUSTOMER'
-  });
-  
-  const { register } = useContext(AuthContext);
+  const { user, register } = useAuth();
   const navigate = useNavigate();
+  const [form, setForm] = useState({ fullName: '', email: '', password: '', phone: '', role: 'CUSTOMER' });
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  if (user) return <Navigate to="/" replace />;
+
+  const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const success = await register(formData);
-    if (success) {
-      navigate('/shops');
-    }
+    setSubmitting(true);
+    const created = await register(form);
+    setSubmitting(false);
+    if (created) navigate(created.role === 'VENDOR' ? '/create-shop' : '/shops', { replace: true });
   };
 
   return (
-    <div className="min-h-full flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 mt-4">
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-md border border-gray-100">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Ro'yxatdan o'tish
-          </h2>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
+    <div className="page container-page flex min-h-[70vh] items-center justify-center">
+      <div className="w-full max-w-md animate-fade-up">
+        <div className="card p-8 sm:p-10">
+          <div className="mb-7 text-center">
+            <span className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-lg shadow-brand-600/25">
+              <ShoppingBag className="h-6 w-6" />
+            </span>
+            <h1 className="page-title">Ro'yxatdan o'tish</h1>
+            <p className="page-subtitle">Bir daqiqada hisob yarating va boshlang</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 rounded-2xl bg-slate-50 p-1.5 sm:grid-cols-2">
+              {ROLES.map((r) => {
+                const active = form.role === r.value;
+                const Icon = r.icon;
+                return (
+                  <button
+                    type="button"
+                    key={r.value}
+                    onClick={() => setForm((prev) => ({ ...prev, role: r.value }))}
+                    className={`flex items-start gap-2.5 rounded-xl px-3 py-2.5 text-left transition ${
+                      active ? 'bg-white shadow-sm ring-1 ring-brand-200' : 'hover:bg-white/60'
+                    }`}
+                  >
+                    <Icon className={`mt-0.5 h-4 w-4 ${active ? 'text-brand-600' : 'text-slate-400'}`} />
+                    <span>
+                      <span className={`block text-sm font-semibold ${active ? 'text-slate-900' : 'text-slate-600'}`}>
+                        {r.title}
+                      </span>
+                      <span className="block text-xs leading-snug text-slate-400">{r.description}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
             <div>
+              <label htmlFor="fullName" className="label">
+                Ism familiya
+              </label>
               <input
+                id="fullName"
                 name="fullName"
                 type="text"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Ismingiz (To'liq)"
+                minLength={2}
+                autoComplete="name"
+                className="input"
+                placeholder="Aliyev Vali"
+                value={form.fullName}
                 onChange={handleChange}
               />
             </div>
-            <div>
-              <input
-                name="email"
-                type="email"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Email manzil"
-                onChange={handleChange}
-              />
-            </div>
-            <div>
-              <input
-                name="password"
-                type="password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Parol (kamida 6 ta belgi)"
-                onChange={handleChange}
-                minLength="6"
-              />
-            </div>
-            <div>
-              <select
-                name="role"
-                className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 bg-white text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                onChange={handleChange}
-              >
-                <option value="CUSTOMER">Oddiy xaridor (Customer)</option>
-                <option value="VENDOR">Do'kon egasi (Vendor)</option>
-              </select>
-            </div>
-          </div>
 
-          <div>
-            <button
-              type="submit"
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm"
-            >
-              Ro'yxatdan o'tish
+            <div>
+              <label htmlFor="email" className="label">
+                Email manzil
+              </label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  className="input pl-10"
+                  placeholder="ism@example.uz"
+                  value={form.email}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="phone" className="label">
+                Telefon raqam{' '}
+                <span className="font-normal text-slate-400">(ixtiyoriy)</span>
+              </label>
+              <div className="relative">
+                <Phone className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  className="input pl-10"
+                  placeholder="+998 90 123 45 67"
+                  value={form.phone}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="password" className="label">
+                Parol
+              </label>
+              <div className="relative">
+                <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  className="input pl-10"
+                  placeholder="Kamida 6 ta belgi"
+                  value={form.password}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <button type="submit" disabled={submitting} className="btn btn-primary btn-lg btn-block">
+              {submitting ? <Spinner size="sm" /> : <ArrowRight className="h-4 w-4" />}
+              {submitting ? 'Yaratilmoqda...' : "Ro'yxatdan o'tish"}
             </button>
-          </div>
-        </form>
-        <div className="text-sm text-center">
-          <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
-            Hisobingiz bormi? Kirish
-          </Link>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-slate-500">
+            Hisobingiz bormi?{' '}
+            <Link to="/login" className="font-semibold text-brand-600 hover:text-brand-700">
+              Kirish
+            </Link>
+          </p>
         </div>
       </div>
     </div>

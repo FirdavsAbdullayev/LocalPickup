@@ -1,57 +1,92 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { CartContext, useAuth } from './contexts';
 import { toast } from 'react-toastify';
 import api from '../services/api';
-import { AuthContext } from './AuthContext';
-
-export const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
 
-  const fetchCart = async () => {
-    if (!user) { setCartItems([]); return; }
+  const fetchCart = useCallback(async () => {
     try {
       const res = await api.get('/cart');
       setCartItems(res.data.data.cart);
-    } catch (e) { console.error(e); }
-  };
-
-  useEffect(() => { fetchCart(); }, [user]);
-
-  const addToCart = async (product) => {
-    if (!user) { toast.error('Iltimos, avval tizimga kiring!'); return; }
-    try {
-      await api.post('/cart', { productId: product.id, quantity: 1 });
-      toast.success("Savatga muvaffaqiyatli qo'shildi");
-      fetchCart();
-    } catch (e) { toast.error('Xatolik yuz berdi'); }
-  };
-
-  const updateQuantity = async (cartItemId, quantity) => {
-    try {
-      await api.patch(`/cart/${cartItemId}`, { quantity });
-      fetchCart();
-    } catch (e) { console.error(e); }
-  };
-
-  const removeFromCart = async (cartItemId) => {
-    try {
-      await api.delete(`/cart/${cartItemId}`);
-      toast.info('Savatdan olib tashlandi');
-      fetchCart();
-    } catch (e) { toast.error('Xatolik yuz berdi'); }
-  };
-
-  const clearCart = async () => {
-    try {
-      if (cartItems.length > 0) await api.delete('/cart');
+    } catch {
       setCartItems([]);
-    } catch (e) { console.error(e); }
-  };
+    }
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!user) {
+        setCartItems([]);
+        return;
+      }
+      await fetchCart();
+    };
+    load();
+  }, [user, fetchCart]);
+
+  const addToCart = useCallback(
+    async (product) => {
+      if (!user) {
+        toast.error('Iltimos, avval tizimga kiring!');
+        return false;
+      }
+      try {
+        await api.post('/cart', { productId: product.id, quantity: 1 });
+        toast.success("Savatga qo'shildi");
+        await fetchCart();
+        return true;
+      } catch {
+        toast.error("Savatga qo'shib bo'lmadi. Qaytadan urinib ko'ring.");
+        return false;
+      }
+    },
+    [user, fetchCart]
+  );
+
+  const updateQuantity = useCallback(
+    async (cartItemId, quantity) => {
+      try {
+        await api.patch(`/cart/${cartItemId}`, { quantity });
+        setCartItems((prev) => prev.map((i) => (i.id === cartItemId ? { ...i, quantity } : i)));
+      } catch {
+        toast.error('Miqdorni o\'zgartirib bo\'lmadi');
+      }
+    },
+    []
+  );
+
+  const removeFromCart = useCallback(
+    async (cartItemId) => {
+      try {
+        await api.delete(`/cart/${cartItemId}`);
+        setCartItems((prev) => prev.filter((i) => i.id !== cartItemId));
+        toast.info('Savatdan olib tashlandi');
+      } catch {
+        toast.error('Olib tashlab bo\'lmadi');
+      }
+    },
+    []
+  );
+
+  const clearCart = useCallback(async () => {
+    try {
+      await api.delete('/cart');
+    } catch {
+      // Savat allaqachon bo'sh bo'lishi mumkin — xatosiz davom etamiz
+    } finally {
+      setCartItems([]);
+    }
+  }, []);
+
+  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ cartItems, addToCart, updateQuantity, removeFromCart, clearCart, fetchCart }}>
+    <CartContext.Provider
+      value={{ cartItems, cartCount, addToCart, updateQuantity, removeFromCart, clearCart, fetchCart }}
+    >
       {children}
     </CartContext.Provider>
   );

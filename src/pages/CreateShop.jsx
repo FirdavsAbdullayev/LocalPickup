@@ -1,11 +1,11 @@
-import React, { useState, useContext } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { Clock, Image, MapPin, Phone, Store, Text } from 'lucide-react';
 import api from '../services/api';
-import { AuthContext } from '../context/AuthContext';
+import Spinner from '../components/Spinner';
 
 const CreateShop = () => {
-  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -16,101 +16,140 @@ const CreateShop = () => {
     logo: '',
   });
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!user) {
-      toast.error('Iltimos, avval tizimga kiring!');
-      navigate('/login');
-      return;
-    }
     setLoading(true);
     try {
       const res = await api.post('/shops', form);
-      toast.success('Do\'koningiz muvaffaqiyatli yaratildi!');
+      toast.success("Do'koningiz yaratildi!");
       navigate(`/shops/${res.data.data.shop.slug}`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Do\'kon yaratishda xatolik');
+      toast.error(err.response?.data?.message || "Do'kon yaratishda xatolik yuz berdi");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-extrabold text-gray-900 mb-8">Yangi do'kon ochish</h1>
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 space-y-5">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Do'kon nomi *</label>
-          <input
-            name="name"
-            type="text"
-            required
-            value={form.name}
-            onChange={handleChange}
-            placeholder="Masalan: 'Oqtepa Lavash Chilonzor'"
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-          />
+    <div className="page container-page max-w-2xl">
+      <header className="mb-7">
+        <h1 className="page-title">Yangi do'kon ochish</h1>
+        <p className="page-subtitle">
+          Do'kon ma'lumotlarini to'ldiring — u admin moderatsiyasidan o'tgach platformada e'lon qilinadi.
+        </p>
+      </header>
+
+      <form onSubmit={handleSubmit} className="card space-y-5 p-6 sm:p-8">
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>Yangi do'konlar admin tomonidan tasdiqlanadi. Odatda bu bir necha daqiqa davom etadi.</p>
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Telefon raqam</label>
-          <input
-            name="phone"
-            type="text"
-            value={form.phone}
-            onChange={handleChange}
-            placeholder="+998 90 123 45 67"
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-          />
+          <label htmlFor="name" className="label">
+            Do'kon nomi <span className="text-rose-500">*</span>
+          </label>
+          <div className="relative">
+            <Store className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              id="name"
+              name="name"
+              type="text"
+              required
+              minLength={2}
+              className="input pl-10"
+              placeholder="Masalan: Oqtepa Lavash Chilonzor"
+              value={form.name}
+              onChange={handleChange}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="phone" className="label">
+              Telefon raqam
+            </label>
+            <div className="relative">
+              <Phone className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                className="input pl-10"
+                placeholder="+998 90 123 45 67"
+                value={form.phone}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="address" className="label">
+              Manzil
+            </label>
+            <div className="relative">
+              <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                id="address"
+                name="address"
+                type="text"
+                className="input pl-10"
+                placeholder="Toshkent sh., Chilonzor 9-mavze"
+                value={form.address}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Manzil</label>
-          <input
-            name="address"
-            type="text"
-            value={form.address}
-            onChange={handleChange}
-            placeholder="Toshkent sh., Chilonzor 9-mavze"
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-          />
+          <label htmlFor="logo" className="label">
+            Logo / banner rasmi <span className="font-normal text-slate-400">(URL)</span>
+          </label>
+          <div className="relative">
+            <Image className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              id="logo"
+              name="logo"
+              type="url"
+              className="input pl-10"
+              placeholder="https://..."
+              value={form.logo}
+              onChange={handleChange}
+            />
+          </div>
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Logo / Banner rasmi (URL)</label>
-          <input
-            name="logo"
-            type="url"
-            value={form.logo}
-            onChange={handleChange}
-            placeholder="https://..."
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-          />
+          <label htmlFor="description" className="label">
+            Tavsif
+          </label>
+          <div className="relative">
+            <Text className="pointer-events-none absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+            <textarea
+              id="description"
+              name="description"
+              rows={4}
+              className="input pl-10"
+              placeholder="Do'koningiz va mahsulotlaringiz haqida qisqacha ma'lumot..."
+              value={form.description}
+              onChange={handleChange}
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Tavsif</label>
-          <textarea
-            name="description"
-            rows={3}
-            value={form.description}
-            onChange={handleChange}
-            placeholder="Do'koningiz va mahsulotlaringiz haqida qisqacha ma'lumot..."
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-          />
+        <div className="flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+          <button type="button" onClick={() => navigate(-1)} className="btn btn-outline">
+            Bekor qilish
+          </button>
+          <button type="submit" disabled={loading} className="btn btn-primary btn-lg">
+            {loading ? <Spinner size="sm" /> : <Store className="h-4 w-4" />}
+            {loading ? 'Yaratilmoqda...' : "Do'konni yaratish"}
+          </button>
         </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-3.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition disabled:opacity-60 shadow-sm"
-        >
-          {loading ? 'Yaratilmoqda...' : 'Do\'konni yaratish'}
-        </button>
       </form>
     </div>
   );

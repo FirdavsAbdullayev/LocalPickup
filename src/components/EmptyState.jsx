@@ -1,29 +1,31 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { Package } from 'lucide-react';
 
-const EmptyState = ({ icon: Icon = Package, title, description, actionLabel, actionTo }) => {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-      <div className="h-20 w-20 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-6 shadow-sm">
-        {typeof Icon === 'function' || typeof Icon === 'object' ? (
-          <Icon className="h-10 w-10 text-indigo-600 stroke-[1.5]" />
-        ) : (
-          <span className="text-3xl">{Icon}</span>
-        )}
-      </div>
-      <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>
-      {description && <p className="text-gray-500 mb-6 max-w-sm text-sm leading-relaxed">{description}</p>}
-      {actionLabel && actionTo && (
-        <Link
-          to={actionTo}
-          className="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition shadow-sm text-sm"
-        >
-          {actionLabel}
-        </Link>
-      )}
+const EmptyState = ({
+  icon: Icon = Package,
+  title,
+  description,
+  actionLabel,
+  actionTo,
+  actionHref,
+}) => (
+  <div className="card mx-auto flex max-w-lg flex-col items-center px-6 py-14 text-center">
+    <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+      <Icon className="h-8 w-8" strokeWidth={1.6} />
     </div>
-  );
-};
+    <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+    {description && <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-500">{description}</p>}
+    {actionLabel && actionTo && (
+      <Link to={actionTo} className="btn btn-primary mt-6">
+        {actionLabel}
+      </Link>
+    )}
+    {actionLabel && actionHref && (
+      <a href={actionHref} className="btn btn-primary mt-6" target="_blank" rel="noreferrer">
+        {actionLabel}
+      </a>
+    )}
+  </div>
+);
 
 export default EmptyState;

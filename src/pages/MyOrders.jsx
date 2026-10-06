@@ -1,110 +1,153 @@
-import React, { useState, useEffect } from 'react';
-import { Package, Clock, Flame, CheckCircle2, PackageCheck, XCircle, Store } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CalendarClock, Package, Store, XCircle } from 'lucide-react';
+import { toast } from 'react-toastify';
 import api from '../services/api';
 import EmptyState from '../components/EmptyState';
+import { PageLoader } from '../components/SkeletonCard';
+import Spinner from '../components/Spinner';
 
-const STATUS_MAP = {
-  PENDING:   { label: 'Kutilmoqda',    color: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
-  PREPARING: { label: 'Tayyorlanmoqda', color: 'bg-blue-50 text-blue-700 border-blue-200', icon: Flame },
-  READY:     { label: 'Tayyor!',        color: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
-  COMPLETED: { label: 'Bajarildi',     color: 'bg-gray-100 text-gray-700 border-gray-200', icon: PackageCheck },
-  CANCELLED: { label: 'Bekor qilingan', color: 'bg-rose-50 text-rose-700 border-rose-200', icon: XCircle },
+const ORDER_STATUS = {
+  PENDING: { label: 'Kutilmoqda', className: 'badge-warning' },
+  PREPARING: { label: 'Tayyorlanmoqda', className: 'badge-info' },
+  READY: { label: 'Tayyor!', className: 'badge-success' },
+  COMPLETED: { label: 'Bajarildi', className: 'badge-neutral' },
+  CANCELLED: { label: 'Bekor qilingan', className: 'badge-danger' },
 };
+
+const formatPrice = (value) => `${Number(value).toLocaleString('uz-UZ')} so'm`;
+const formatDate = (value) => new Date(value).toLocaleString('uz-UZ');
 
 const MyOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState(null);
 
   useEffect(() => {
-    api.get('/orders/my')
-      .then(res => setOrders(res.data.data.orders || []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    let active = true;
+    api
+      .get('/orders/my')
+      .then((res) => {
+        if (active) setOrders(res.data.data.orders || []);
+      })
+      .catch(() => {
+        if (active) toast.error('Buyurtmalarni yuklashda xatolik');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleCancel = async (orderId) => {
-    if (!confirm('Rostdan ham bekor qilmoqchimisiz?')) return;
+    if (!window.confirm('Rostdan ham bekor qilmoqchimisiz?')) return;
+    setCancellingId(orderId);
     try {
       await api.patch(`/orders/${orderId}/cancel`);
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'CANCELLED' } : o));
-    } catch (e) { console.error(e); }
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status: 'CANCELLED' } : o)));
+      toast.info('Buyurtma bekor qilindi');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Bekor qilib bo\'lmadi');
+    } finally {
+      setCancellingId(null);
+    }
   };
 
-  if (loading) return <div className="text-center py-20 text-gray-400">Yuklanmoqda...</div>;
+  if (loading) return <PageLoader />;
 
   if (!orders.length) {
-    return <EmptyState icon={Package} title="Sizda hali buyurtmalar yo'q" actionLabel="Xaridni boshlash" actionTo="/shops" />;
+    return (
+      <div className="page container-page">
+        <EmptyState
+          icon={Package}
+          title="Sizda hali buyurtmalar yo'q"
+          description="Do'konlardan mahsulot tanlab, birinchi buyurtmangizni bering."
+          actionLabel="Xaridni boshlash"
+          actionTo="/shops"
+        />
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100">
-          <Package className="h-7 w-7" />
-        </div>
-        <h1 className="text-3xl font-extrabold text-gray-900">Mening buyurtmalarim</h1>
-      </div>
-      
-      <div className="space-y-6">
-        {orders.map(order => {
-          const st = STATUS_MAP[order.status] || STATUS_MAP.PENDING;
-          const StatusIcon = st.icon;
+    <div className="page container-page max-w-4xl">
+      <header className="mb-7">
+        <h1 className="page-title">Mening buyurtmalarim</h1>
+        <p className="page-subtitle">{orders.length} ta buyurtma</p>
+      </header>
+
+      <div className="space-y-5">
+        {orders.map((order) => {
+          const st = ORDER_STATUS[order.status] || ORDER_STATUS.PENDING;
+
           return (
-            <div key={order.id} className={`bg-white rounded-2xl border ${st.color.split(' ')[2] || 'border-gray-100'} shadow-sm overflow-hidden`}>
-              <div className="flex flex-wrap items-center justify-between px-6 py-4 border-b border-gray-50 gap-4">
-                <div>
-                  <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                    <Store className="h-5 w-5 text-indigo-600" />
-                    {order.shop?.name}
-                  </h3>
-                  <p className="text-sm text-gray-400 mt-1">Sana: {new Date(order.createdAt).toLocaleString('uz-UZ')}</p>
+            <article key={order.id} className="card overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
+                <div className="min-w-0">
+                  <h2 className="flex items-center gap-2 font-bold text-slate-900">
+                    <Store className="h-4 w-4 text-brand-600" />
+                    <span className="truncate">{order.shop?.name}</span>
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-400">Buyurtma: {formatDate(order.createdAt)}</p>
                 </div>
+
                 <div className="flex items-center gap-4">
-                  <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border ${st.color}`}>
-                    <StatusIcon className="h-3.5 w-3.5" />
-                    {st.label}
-                  </span>
-                  <span className="text-xl font-extrabold text-indigo-600">
-                    {Number(order.totalAmount).toLocaleString()} so'm
-                  </span>
+                  <span className={`badge ${st.className}`}>{st.label}</span>
+                  <span className="text-lg font-extrabold text-brand-700">{formatPrice(order.totalAmount)}</span>
                 </div>
               </div>
 
-              <div className="px-6 py-4 bg-gray-50/50">
-                <div className="space-y-2">
-                  {order.items?.map(item => (
-                    <div key={item.id} className="flex justify-between items-center text-sm">
-                      <div className="flex items-center gap-2">
+              <div className="bg-slate-50/70 px-5 py-4 sm:px-6">
+                <ul className="space-y-2.5">
+                  {order.items?.map((item) => (
+                    <li key={item.id} className="flex items-center justify-between gap-3 text-sm">
+                      <div className="flex min-w-0 items-center gap-3">
                         {item.product?.image ? (
-                          <img src={item.product.image} className="h-8 w-8 rounded-lg object-cover" alt="" />
+                          <img
+                            src={item.product.image}
+                            alt=""
+                            className="h-9 w-9 shrink-0 rounded-lg object-cover"
+                          />
                         ) : (
-                          <div className="h-8 w-8 rounded-lg bg-gray-200 flex items-center justify-center">
-                            <Package className="h-4 w-4 text-gray-500" />
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-200">
+                            <Package className="h-4 w-4 text-slate-500" />
                           </div>
                         )}
-                        <span className="font-medium text-gray-700">{item.product?.title} <span className="text-gray-400">× {item.quantity}</span></span>
+                        <span className="truncate text-slate-700">
+                          {item.product?.title}{' '}
+                          <span className="text-slate-400">× {item.quantity}</span>
+                        </span>
                       </div>
-                      <span className="font-semibold">{(Number(item.unitPrice) * item.quantity).toLocaleString()} so'm</span>
-                    </div>
+                      <span className="shrink-0 font-semibold text-slate-800">
+                        {formatPrice(Number(item.unitPrice) * item.quantity)}
+                      </span>
+                    </li>
                   ))}
-                </div>
-                
+                </ul>
+
                 {order.pickupTime && (
-                  <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-medium border border-indigo-100">
-                    <Clock className="h-3.5 w-3.5" />
-                    Olib ketish: {new Date(order.pickupTime).toLocaleString('uz-UZ')}
+                  <div className="mt-4 flex items-center gap-1.5 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-xs font-medium text-brand-700">
+                    <CalendarClock className="h-3.5 w-3.5" />
+                    Olib ketish: {formatDate(order.pickupTime)}
                   </div>
                 )}
               </div>
 
-              {['PENDING'].includes(order.status) && (
-                <div className="px-6 pb-4 pt-2">
-                  <button onClick={() => handleCancel(order.id)} className="text-sm text-red-600 border border-red-200 px-4 py-2 rounded-xl hover:bg-red-50 transition font-semibold">
+              {order.status === 'PENDING' && (
+                <div className="flex justify-end px-5 py-3.5 sm:px-6">
+                  <button
+                    type="button"
+                    onClick={() => handleCancel(order.id)}
+                    disabled={cancellingId === order.id}
+                    className="btn btn-danger btn-sm"
+                  >
+                    {cancellingId === order.id ? <Spinner size="sm" /> : <XCircle className="h-4 w-4" />}
                     Bekor qilish
                   </button>
                 </div>
               )}
-            </div>
+            </article>
           );
         })}
       </div>

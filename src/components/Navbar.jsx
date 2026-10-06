@@ -1,113 +1,196 @@
-import React, { useContext, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingBag, User, LogOut, ShoppingCart, Heart, Bell, Shield, Menu, X } from 'lucide-react';
-import { AuthContext } from '../context/AuthContext';
-import { CartContext } from '../context/CartContext';
-import { FavoritesContext } from '../context/FavoritesContext';
+import { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Heart, LayoutDashboard, LogOut, Menu, ShoppingBag, ShoppingCart, Store, User, X } from 'lucide-react';
+import { useAuth, useCart, useFavorites } from '../context/contexts';
+
+const navLinkClass = ({ isActive }) =>
+  `rounded-lg px-3 py-2 text-sm font-medium transition ${
+    isActive ? 'text-brand-700' : 'text-slate-600 hover:text-slate-900'
+  }`;
 
 const Navbar = () => {
-  const { user, logout } = useContext(AuthContext);
-  const { cartItems } = useContext(CartContext);
-  const { favorites } = useContext(FavoritesContext);
+  const { user, logout } = useAuth();
+  const { cartCount } = useCart();
+  const { favorites } = useFavorites();
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
 
-  const handleLogout = () => { logout(); navigate('/'); setOpen(false); };
+  const close = () => setOpen(false);
+
+  const handleLogout = () => {
+    logout();
+    close();
+    navigate('/');
+  };
+
+  const dashboardHref =
+    user?.role === 'SUPER_ADMIN' ? '/admin' : user?.role === 'VENDOR' ? '/vendor/orders' : '/my-orders';
+
+  const dashboardLabel =
+    user?.role === 'SUPER_ADMIN' ? 'Admin panel' : user?.role === 'VENDOR' ? 'Sotuvchi paneli' : 'Buyurtmalarim';
 
   return (
-    <nav className="bg-white shadow-sm sticky top-0 z-50 border-b border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 font-extrabold text-xl text-indigo-600">
-            <ShoppingBag className="h-7 w-7" />
-            <span>LocalPickup</span>
+    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/85 backdrop-blur-md">
+      <nav className="container-page flex h-16 items-center justify-between gap-4">
+        <div className="flex items-center gap-8">
+          <Link to="/" className="flex items-center gap-2.5 font-extrabold tracking-tight text-slate-900">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-600/30">
+              <ShoppingBag className="h-5 w-5" />
+            </span>
+            <span className="text-lg">
+              Local<span className="text-brand-600">Pickup</span>
+            </span>
           </Link>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-5">
-            <Link to="/shops" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition">
+          <div className="hidden items-center gap-1 md:flex">
+            <Link to="/shops" className={navLinkClass({ isActive: location.pathname.startsWith('/shops') })}>
               Do'konlar
             </Link>
             {user && (
               <>
-                <Link to="/cart" className="relative text-gray-500 hover:text-indigo-600 transition">
-                  <ShoppingCart className="h-6 w-6" />
-                  {cartItems.length > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-indigo-600 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold">
-                      {cartItems.length}
-                    </span>
-                  )}
+                <Link to="/favorites" className={navLinkClass({ isActive: location.pathname === '/favorites' })}>
+                  Yoqtirganlar
                 </Link>
-                <Link to="/favorites" className="relative text-gray-500 hover:text-red-500 transition">
-                  <Heart className="h-6 w-6" />
-                  {favorites.length > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold">
-                      {favorites.length}
-                    </span>
-                  )}
+                <Link to="/my-orders" className={navLinkClass({ isActive: location.pathname === '/my-orders' })}>
+                  Buyurtmalarim
                 </Link>
               </>
             )}
+            {user && user.role !== 'CUSTOMER' && (
+              <Link
+                to={dashboardHref}
+                className={navLinkClass({ isActive: location.pathname.startsWith('/vendor') || location.pathname === '/admin' })}
+              >
+                {dashboardLabel}
+              </Link>
+            )}
           </div>
+        </div>
 
-          {/* Right side */}
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          {user ? (
+            <>
+              <Link
+                to="/favorites"
+                className="relative hidden h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-rose-500 sm:flex"
+                aria-label="Yoqtirganlar"
+              >
+                <Heart className="h-5 w-5" />
+                {favorites.length > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                    {favorites.length}
+                  </span>
+                )}
+              </Link>
+
+              <Link
+                to="/cart"
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-brand-600"
+                aria-label="Savat"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-bold text-white">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+
+              <div className="hidden items-center gap-2 border-l border-slate-200 pl-3 md:flex">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
+                  {user.fullName?.charAt(0)?.toUpperCase() || <User className="h-4 w-4" />}
+                </span>
+                <span className="max-w-[10rem] truncate text-sm font-semibold text-slate-700">
+                  {user.fullName}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                  title="Chiqish"
+                  aria-label="Chiqish"
+                >
+                  <LogOut className="h-4.5 w-4.5" />
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="hidden items-center gap-2 sm:flex">
+              <Link to="/login" className="btn btn-ghost">
+                Kirish
+              </Link>
+              <Link to="/register" className="btn btn-primary">
+                Ro'yxatdan o'tish
+              </Link>
+            </div>
+          )}
+
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 md:hidden"
+            aria-label="Menyu"
+            aria-expanded={open}
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
+      </nav>
+
+      {open && (
+        <div className="border-t border-slate-200/80 bg-white px-4 pb-4 pt-2 md:hidden">
+          <div className="flex flex-col gap-1">
+            <Link to="/shops" onClick={close} className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              Do'konlar
+            </Link>
+
             {user ? (
               <>
-                {user.role === 'SUPER_ADMIN' && (
-                  <Link to="/admin" className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-semibold text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 transition">
-                    <Shield className="h-4 w-4" /> Admin
+                <Link to="/favorites" onClick={close} className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  Yoqtirganlar ({favorites.length})
+                </Link>
+                <Link to="/cart" onClick={close} className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  Savat ({cartCount})
+                </Link>
+                <Link to="/my-orders" onClick={close} className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  Buyurtmalarim
+                </Link>
+                {user.role !== 'CUSTOMER' && (
+                  <Link
+                    to={dashboardHref}
+                    onClick={close}
+                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-50"
+                  >
+                    <LayoutDashboard className="h-4 w-4" /> {dashboardLabel}
                   </Link>
                 )}
-                {user.role === 'VENDOR' && (
-                  <Link to="/vendor/orders" className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-semibold text-yellow-700 bg-yellow-50 border border-yellow-200 hover:bg-yellow-100 transition">
-                    <Bell className="h-4 w-4" /> Buyurtmalar
-                  </Link>
-                )}
-                {user.role === 'CUSTOMER' && (
-                  <Link to="/my-orders" className="hidden md:block px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:text-indigo-600 transition">
-                    Buyurtmalarim
-                  </Link>
-                )}
-                <div className="hidden md:flex items-center gap-2 pl-3 border-l border-gray-200">
-                  <span className="text-sm font-semibold text-gray-700">
-                    {user.fullName?.split(' ')[0]}
-                  </span>
-                  <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 transition" title="Chiqish">
-                    <LogOut className="h-5 w-5" />
-                  </button>
-                </div>
-                {/* Mobile menu btn */}
-                <button onClick={() => setOpen(!open)} className="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100">
-                  {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                <button
+                  onClick={handleLogout}
+                  className="mt-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-rose-600 hover:bg-rose-50"
+                >
+                  <LogOut className="h-4 w-4" /> Chiqish
                 </button>
               </>
             ) : (
-              <>
-                <Link to="/login" className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition hidden md:block">Kirish</Link>
-                <Link to="/register" className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition">
-                  Ro'yxat
+              <div className="mt-2 flex flex-col gap-2 border-t border-slate-100 pt-3">
+                <Link to="/login" onClick={close} className="btn btn-outline btn-block">
+                  Kirish
                 </Link>
-              </>
+                <Link to="/register" onClick={close} className="btn btn-primary btn-block">
+                  Ro'yxatdan o'tish
+                </Link>
+              </div>
+            )}
+
+            {user && (
+              <div className="flex items-center gap-2 border-t border-slate-100 px-3 pt-3 text-sm text-slate-500">
+                <Store className="h-4 w-4 text-slate-400" />
+                {user.fullName}
+              </div>
             )}
           </div>
         </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {open && user && (
-        <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-2">
-          <Link to="/shops" onClick={() => setOpen(false)} className="block py-2 text-gray-700 font-medium">Do'konlar</Link>
-          <Link to="/cart" onClick={() => setOpen(false)} className="block py-2 text-gray-700 font-medium">Savat ({cartItems.length})</Link>
-          <Link to="/favorites" onClick={() => setOpen(false)} className="block py-2 text-gray-700 font-medium">Yoqtirganlar ({favorites.length})</Link>
-          {user.role === 'CUSTOMER' && <Link to="/my-orders" onClick={() => setOpen(false)} className="block py-2 text-gray-700 font-medium">Buyurtmalarim</Link>}
-          {user.role === 'VENDOR' && <Link to="/vendor/orders" onClick={() => setOpen(false)} className="block py-2 text-yellow-700 font-medium">Buyurtmalar paneli</Link>}
-          {user.role === 'SUPER_ADMIN' && <Link to="/admin" onClick={() => setOpen(false)} className="block py-2 text-purple-700 font-medium">Admin panel</Link>}
-          <button onClick={handleLogout} className="block py-2 text-red-600 font-medium w-full text-left">Chiqish</button>
-        </div>
       )}
-    </nav>
+    </header>
   );
 };
 

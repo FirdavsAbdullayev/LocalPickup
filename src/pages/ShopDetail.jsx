@@ -1,118 +1,177 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { MapPin, Phone, Plus, ChevronRight, Store, Package, Clock } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { Check, ChevronRight, Clock, MapPin, Package, Phone, Plus, Store } from 'lucide-react';
 import api from '../services/api';
-import { AuthContext } from '../context/AuthContext';
+import { useAuth } from '../context/contexts';
 import ProductCard from '../components/ProductCard';
-import { SkeletonCard } from '../components/SkeletonCard';
 import EmptyState from '../components/EmptyState';
+import Spinner from '../components/Spinner';
+import { SkeletonCard } from '../components/SkeletonCard';
 
 const ShopDetail = () => {
   const { slug } = useParams();
-  const [shop, setShop] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const { user } = useContext(AuthContext);
+  const { user } = useAuth();
+  const [state, setState] = useState({ slug: null, shop: null });
 
   useEffect(() => {
-    const fetchShop = async () => {
-      setLoading(true);
-      try {
-        const res = await api.get(`/shops/slug/${slug}`);
-        // Xavfsiz ma'lumot olish (har qanday API strukturasiga mos tushadi)
-        const shopData = res.data?.data?.shop || res.data?.shop || res.data;
-        setShop(shopData || null);
-      } catch (e) {
-        console.error('Fetch shop error:', e);
-        setShop(null);
-      } finally {
-        setLoading(false);
-      }
+    let active = true;
+    api
+      .get(`/shops/slug/${slug}`)
+      .then((res) => {
+        if (active) setState({ slug, shop: res.data?.data?.shop || null });
+      })
+      .catch(() => {
+        if (active) setState({ slug, shop: null });
+      });
+    return () => {
+      active = false;
     };
-    fetchShop();
   }, [slug]);
 
-  const isOwner = user && shop && user.id === shop.ownerId;
+  const loading = state.slug !== slug;
+  const shop = loading ? null : state.shop;
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-10">
-        <div className="h-48 bg-gray-200 rounded-2xl animate-pulse mb-8" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[...Array(8)].map((_, i) => <SkeletonCard key={i} />)}
+      <div className="page container-page">
+        <div className="skeleton mb-8 h-48 rounded-2xl" />
+        <div className="mb-6 flex items-center gap-3 text-sm text-slate-500">
+          <Spinner size="sm" /> Yuklanmoqda...
+        </div>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <SkeletonCard key={i} />
+          ))}
         </div>
       </div>
     );
   }
 
   if (!shop) {
-    return <EmptyState icon={Store} title="Do'kon topilmadi" actionLabel="Barcha do'konlar" actionTo="/shops" />;
+    return (
+      <div className="page container-page">
+        <EmptyState
+          icon={Store}
+          title="Do'kon topilmadi"
+          description="Bu do'kon o'chirilgan yoki mavjud emas bo'lishi mumkin."
+          actionLabel="Barcha do'konlar"
+          actionTo="/shops"
+        />
+      </div>
+    );
   }
 
+  const isOwner = user && (user.id === shop.ownerId || user.role === 'SUPER_ADMIN');
+  const products = shop.products || [];
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Shop Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-2xl p-8 text-white mb-8 shadow-lg">
-        <div className="flex flex-col md:flex-row md:items-center gap-6">
-          <div className="h-20 w-20 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0 overflow-hidden border border-white/20">
-            {shop.logo ? (
-              <img src={shop.logo} alt={shop.name} className="h-full w-full object-cover" />
-            ) : (
-              <Store className="h-10 w-10 text-white" />
-            )}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-3xl font-extrabold">{shop.name}</h1>
-              {!shop.isApproved && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-400 text-amber-950 rounded-full text-xs font-bold shadow-sm">
-                  <Clock className="h-3.5 w-3.5" /> Ko'rib chiqilmoqda
-                </span>
+    <div className="page container-page">
+      <nav className="mb-5 flex items-center gap-1.5 text-sm text-slate-500">
+        <Link to="/shops" className="transition hover:text-brand-600">
+          Do'konlar
+        </Link>
+        <ChevronRight className="h-4 w-4 text-slate-300" />
+        <span className="truncate font-medium text-slate-800">{shop.name}</span>
+      </nav>
+
+      {/* Shop header */}
+      <section className="card overflow-hidden">
+        <div className="bg-gradient-to-r from-brand-700 via-brand-600 to-slate-900 px-6 py-8 sm:px-8">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/20 bg-white/15">
+              {shop.logo ? (
+                <img src={shop.logo} alt={shop.name} className="h-full w-full object-cover" />
+              ) : (
+                <Store className="h-9 w-9 text-white" />
               )}
             </div>
-            {shop.description && <p className="text-indigo-100 mt-2 mb-3 max-w-2xl">{shop.description}</p>}
-            <div className="flex flex-wrap gap-4 text-sm text-indigo-200">
-              {shop.address && <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" />{shop.address}</span>}
-              {shop.phone && <span className="flex items-center gap-1.5"><Phone className="h-4 w-4" />{shop.phone}</span>}
+
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-2xl font-extrabold text-white sm:text-3xl">{shop.name}</h1>
+                {shop.isApproved ? (
+                  <span className="badge border-emerald-400/40 bg-emerald-400/15 text-emerald-200">
+                    <Check /> Faol
+                  </span>
+                ) : (
+                  <span className="badge border-amber-400/40 bg-amber-400/15 text-amber-200">
+                    <Clock className="h-3 w-3" /> Moderatsiyada
+                  </span>
+                )}
+              </div>
+
+              {shop.description && (
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-brand-100">{shop.description}</p>
+              )}
+
+              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-brand-100/90">
+                {shop.address && (
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4" /> {shop.address}
+                  </span>
+                )}
+                {shop.phone && (
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="h-4 w-4" /> {shop.phone}
+                  </span>
+                )}
+              </div>
             </div>
+
+            {isOwner && (
+              <div className="flex shrink-0 flex-col gap-2">
+                <Link to={`/vendor/products/new?shopId=${shop.id}`} className="btn btn-light">
+                  <Plus className="h-4 w-4" /> Mahsulot qo'shish
+                </Link>
+                <Link
+                  to="/vendor/orders"
+                  className="btn border border-white/25 bg-white/10 text-white hover:bg-white/20"
+                >
+                  Buyurtmalar
+                </Link>
+              </div>
+            )}
           </div>
-          {isOwner && (
-            <div className="flex flex-col gap-2 flex-shrink-0">
-              <Link
-                to={`/vendor/products/new?shopId=${shop.id}`}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white text-indigo-600 font-semibold rounded-xl hover:bg-indigo-50 transition text-sm shadow-sm"
-              >
-                <Plus className="h-4 w-4" /> Mahsulot qo'shish
-              </Link>
-              <Link
-                to="/vendor/orders"
-                className="flex items-center gap-2 px-4 py-2.5 bg-indigo-700/80 hover:bg-indigo-700 text-white font-semibold rounded-xl transition text-sm border border-indigo-400/30"
-              >
-                Buyurtmalar <ChevronRight className="h-4 w-4" />
-              </Link>
-            </div>
-          )}
         </div>
-      </div>
+
+        {!shop.isApproved && isOwner && (
+          <div className="flex items-start gap-3 border-b border-amber-100 bg-amber-50 px-6 py-4 text-sm text-amber-800 sm:px-8">
+            <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              Do'koningiz hali moderatsiyada. Admin tasdiqlagach, u barcha xaridorlarga ko'rinadi. Siz
+              mahsulot qo'shishni hozir boshlashingiz mumkin.
+            </p>
+          </div>
+        )}
+
+        <div className="flex items-center gap-4 px-6 py-4 text-sm text-slate-500 sm:px-8">
+          <span className="flex items-center gap-1.5">
+            <Package className="h-4 w-4 text-brand-500" />
+            <strong className="text-slate-800">{products.length}</strong> ta mahsulot
+          </span>
+        </div>
+      </section>
 
       {/* Products */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-extrabold text-gray-900">
-          Mahsulotlar
-          <span className="ml-2 text-sm font-normal text-gray-400">{shop.products?.length || 0} ta</span>
-        </h2>
+      <div className="mb-6 mt-10 flex items-end justify-between">
+        <h2 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">Mahsulotlar</h2>
       </div>
 
-      {!shop.products?.length ? (
+      {products.length === 0 ? (
         <EmptyState
           icon={Package}
           title="Hozircha mahsulotlar yo'q"
-          description={isOwner ? "Birinchi mahsulotingizni qo'shing!" : "Tez orada mahsulotlar qo'shiladi."}
-          actionLabel={isOwner ? "+ Mahsulot qo'shish" : undefined}
+          description={
+            isOwner
+              ? "Birinchi mahsulotingizni qo'shing va do'koningizni jonlantiring."
+              : "Tez orada mahsulotlar qo'shiladi."
+          }
+          actionLabel={isOwner ? "Mahsulot qo'shish" : undefined}
           actionTo={isOwner ? `/vendor/products/new?shopId=${shop.id}` : undefined}
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {shop.products.map(product => (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {products.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>

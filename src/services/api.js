@@ -1,37 +1,44 @@
 import axios from 'axios';
 
-// 1. Vercel / .env dan kelayotgan o'zgaruvchini olish
-let rawUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://renewed-success-production-b764.up.railway.app/api/v1';
+const normalizeUrl = (raw) => {
+  let url = String(raw || '')
+    .replace(/[[\]"']/g, '')
+    .trim()
+    .replace(/\/+$/, '');
 
-// 2. Qavslar '[', ']', tirnoqlar va bo'shliqlarni tozalash
-let cleanUrl = String(rawUrl)
-  .replace(/[\[\]'"]/g, '') // '[' va ']' hamda tirnoqlarni olib tashlaydi
-  .trim();
+  if (!url) return '';
 
-// 3. Agar oxirida /api/v1 bo'lmasa, qo'shib qo'yish
-if (!cleanUrl.endsWith('/api/v1')) {
-  cleanUrl = cleanUrl.replace(/\/$/, '') + '/api/v1';
-}
+  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+  if (!/\/api\/v\d+$/i.test(url)) url = `${url}/api/v1`;
 
-console.log('🔗 Connecting to Backend API:', cleanUrl);
+  return url;
+};
+
+const baseURL =
+  normalizeUrl(import.meta.env.VITE_API_URL) ||
+  normalizeUrl(import.meta.env.VITE_API_BASE_URL) ||
+  'http://localhost:5000/api/v1';
 
 const api = axios.create({
-  baseURL: cleanUrl, // Endi har doim https:// bilan boshlanadi va Vercel domeni qo'shilib ketmaydi
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL,
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 20000,
 });
 
-// Request interceptor (JWT Token uchun)
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
     }
-    return config;
-  },
-  (error) => Promise.reject(error)
+    return Promise.reject(error);
+  }
 );
 
 export default api;
