@@ -1,26 +1,28 @@
 import axios from 'axios';
 
-// 1. .env dan keladigan va zaxiradagi Railway API havola
-let envUrl =
-  import.meta.env.VITE_API_URL ||
-  import.meta.env.VITE_API_BASE_URL ||
-  'https://renewed-success-production-b764.up.railway.app/api/v1';
+// 1. Vercel / .env dan kelayotgan o'zgaruvchini olish
+let rawUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://renewed-success-production-b764.up.railway.app/api/v1';
 
-// 2. Vercel environment variable'larida tushib qolgan '[', ']' va ortiqcha belgilarini tozalash
-if (envUrl) {
-  envUrl = envUrl.replace(/[\[\]'"]/g, '').trim();
+// 2. Qavslar '[', ']', tirnoqlar va bo'shliqlarni tozalash
+let cleanUrl = String(rawUrl)
+  .replace(/[\[\]'"]/g, '') // '[' va ']' hamda tirnoqlarni olib tashlaydi
+  .trim();
 
-  if (!envUrl.endsWith('/api/v1')) {
-    envUrl = envUrl.replace(/\/$/, '') + '/api/v1';
-  }
+// 3. Agar oxirida /api/v1 bo'lmasa, qo'shib qo'yish
+if (!cleanUrl.endsWith('/api/v1')) {
+  cleanUrl = cleanUrl.replace(/\/$/, '') + '/api/v1';
 }
 
+console.log('🔗 Connecting to Backend API:', cleanUrl);
+
 const api = axios.create({
-  baseURL: envUrl,
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: cleanUrl, // Endi har doim https:// bilan boshlanadi va Vercel domeni qo'shilib ketmaydi
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// Request Interceptor: har bir so'rovga JWT token qo'shish
+// Request interceptor (JWT Token uchun)
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -30,17 +32,6 @@ api.interceptors.request.use(
     return config;
   },
   (error) => Promise.reject(error)
-);
-
-// Response Interceptor: 401 (Unauthorized) bo'lsa tokenni tozalash
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-    }
-    return Promise.reject(error);
-  }
 );
 
 export default api;
