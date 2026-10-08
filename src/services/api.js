@@ -17,7 +17,7 @@ const normalizeUrl = (raw) => {
 const baseURL =
   normalizeUrl(import.meta.env.VITE_API_URL) ||
   normalizeUrl(import.meta.env.VITE_API_BASE_URL) ||
-  'http://localhost:5000/api/v1';
+  'https://renewed-success-production-b764.up.railway.app/api/v1';
 
 const api = axios.create({
   baseURL,
