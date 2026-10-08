@@ -278,6 +278,9 @@ const VendorDashboard = () => {
                         <span className="truncate text-slate-700">
                           {item.product?.title} <span className="text-slate-400">× {item.quantity}</span>
                         </span>
+                        <span className="shrink-0 text-xs font-semibold text-slate-500">
+                          Qoldiq: {item.product?.stockQuantity ?? '-'} dona
+                        </span>
                         <span className="shrink-0 font-semibold text-slate-800">
                           {formatPrice(Number(item.unitPrice) * item.quantity)}
                         </span>

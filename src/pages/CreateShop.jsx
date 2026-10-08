@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Clock, Image, MapPin, Phone, Store, Text } from 'lucide-react';
+import { Clock, Crosshair, Image, MapPin, Phone, Store, Text } from 'lucide-react';
 import api from '../services/api';
 import Spinner from '../components/Spinner';
+
+const MapView = lazy(() => import('../components/MapView'));
 
 const CreateShop = () => {
   const navigate = useNavigate();
@@ -14,15 +16,30 @@ const CreateShop = () => {
     phone: '',
     address: '',
     logo: '',
+    latitude: null,
+    longitude: null,
   });
 
-  const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePick = (lat, lng) => {
+    setForm((prev) => ({ ...prev, latitude: lat, longitude: lng }));
+    toast.success('Do\'kon joylashuvi belgilandi');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await api.post('/shops', form);
+      const payload = {
+        ...form,
+        latitude: form.latitude != null ? Number(form.latitude) : undefined,
+        longitude: form.longitude != null ? Number(form.longitude) : undefined,
+      };
+      const res = await api.post('/shops', payload);
       toast.success("Do'koningiz yaratildi!");
       navigate(`/shops/${res.data.data.shop.slug}`);
     } catch (err) {
@@ -121,6 +138,26 @@ const CreateShop = () => {
               onChange={handleChange}
             />
           </div>
+        </div>
+
+        <div>
+          <label className="label">Do'kon joylashuvi (xaritadan belgilang)</label>
+          <Suspense fallback={<div className="skeleton rounded-xl" style={{ height: '320px' }} />}>
+            <MapView
+              pickMode
+              picked={form.latitude != null && form.longitude != null ? { lat: form.latitude, lng: form.longitude } : null}
+              onPick={handlePick}
+              height="320px"
+            />
+          </Suspense>
+          {form.latitude != null && form.longitude != null ? (
+            <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+              <Crosshair className="h-3.5 w-3.5" />
+              Belgilangan joy: {form.latitude}, {form.longitude} — mijozlar yaqinini topoladi
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-slate-400">Xaritaga bosib do'kon joyini belgilang — ixtiyoriy.</p>
+          )}
         </div>
 
         <div>

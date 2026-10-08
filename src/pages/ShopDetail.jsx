@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Check, ChevronRight, Clock, MapPin, Package, Phone, Plus, Store } from 'lucide-react';
 import api from '../services/api';
@@ -8,25 +8,37 @@ import EmptyState from '../components/EmptyState';
 import Spinner from '../components/Spinner';
 import { SkeletonCard } from '../components/SkeletonCard';
 
+const MapView = lazy(() => import('../components/MapView'));
+
 const ShopDetail = () => {
   const { slug } = useParams();
   const { user } = useAuth();
   const [state, setState] = useState({ slug: null, shop: null });
 
-  useEffect(() => {
-    let active = true;
+  const fetchShop = useCallback(() => {
     api
       .get(`/shops/slug/${slug}`)
-      .then((res) => {
-        if (active) setState({ slug, shop: res.data?.data?.shop || null });
-      })
-      .catch(() => {
-        if (active) setState({ slug, shop: null });
-      });
+      .then((res) => setState({ slug, shop: res.data?.data?.shop || null }))
+      .catch(() => setState({ slug, shop: null }));
+  }, [slug]);
+
+  useEffect(() => {
+    let active = true;
+    const load = () => {
+      if (active) fetchShop();
+    };
+    load();
+    const refetchOnFocus = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    document.addEventListener('visibilitychange', refetchOnFocus);
+    window.addEventListener('focus', refetchOnFocus);
     return () => {
       active = false;
+      document.removeEventListener('visibilitychange', refetchOnFocus);
+      window.removeEventListener('focus', refetchOnFocus);
     };
-  }, [slug]);
+  }, [fetchShop]);
 
   const loading = state.slug !== slug;
   const shop = loading ? null : state.shop;
@@ -151,6 +163,25 @@ const ShopDetail = () => {
           </span>
         </div>
       </section>
+
+      {Number.isFinite(shop.latitude) && Number.isFinite(shop.longitude) && (
+        <section className="card mt-8 overflow-hidden p-0">
+          <div className="flex items-center justify-between border-b border-slate-100 px-6 py-3">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800">
+              <MapPin className="h-4 w-4 text-brand-600" /> Do'kon joylashuvi
+            </h3>
+            {shop.address && <span className="truncate text-sm text-slate-500">{shop.address}</span>}
+          </div>
+          <Suspense fallback={<div className="skeleton rounded-xl" style={{ height: '280px' }} />}>
+            <MapView
+              markers={[{ id: shop.id, lat: shop.latitude, lng: shop.longitude, title: shop.name }]}
+              center={[shop.latitude, shop.longitude]}
+              zoom={15}
+              height="280px"
+            />
+          </Suspense>
+        </section>
+      )}
 
       {/* Products */}
       <div className="mb-6 mt-10 flex items-end justify-between">

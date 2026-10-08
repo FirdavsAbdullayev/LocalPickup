@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Store } from 'lucide-react';
+import { MapPin, Store, Footprints, Car } from 'lucide-react';
 
 const ShopCard = ({ shop }) => (
   <article className="card card-hover group overflow-hidden">
@@ -17,6 +17,7 @@ const ShopCard = ({ shop }) => (
         </div>
       )}
       {!shop.isApproved && <span className="badge badge-warning absolute left-3 top-3">Moderatsiyada</span>}
+      {shop.isFeatured && <span className="badge badge-brand absolute right-3 top-3">Reklama</span>}
     </div>
 
     <div className="p-5">
@@ -27,6 +28,22 @@ const ShopCard = ({ shop }) => (
           <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
           <span className="line-clamp-1">{shop.address}</span>
         </p>
+      )}
+
+      {shop.distanceKm != null && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-medium">
+          <span className="badge">{shop.distanceKm} km</span>
+          {shop.etaMinutes && (
+            <>
+              <span className="badge">
+                <Footprints className="mr-1 inline h-3.5 w-3.5" /> {shop.etaMinutes.walking} daq piyoda
+              </span>
+              <span className="badge">
+                <Car className="mr-1 inline h-3.5 w-3.5" /> {shop.etaMinutes.driving} daq mashinada
+              </span>
+            </>
+          )}
+        </div>
       )}
 
       {shop.description && <p className="mt-2 line-clamp-2 text-sm text-slate-400">{shop.description}</p>}
